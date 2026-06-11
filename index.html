@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Chatbot Jurídico DIPR - PAYBRIDGE 360</title>
+<style>
+    :root {
+        --bg-main: #0f172a;
+        --bg-card: #1e293b;
+        --bg-input: #020617;
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --success: #10b981;
+        --success-hover: #059669;
+        --warning: #f59e0b;
+        --text-white: #ffffff;
+        --text-muted: #94a3b8;
+    }
+
+    body { 
+        font-family: 'Segoe UI', Arial, sans-serif; 
+        background: var(--bg-main); 
+        color: var(--text-white); 
+        margin: 0; 
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    /* Encabezado Institucional Riguroso */
+    header {
+        background: var(--bg-card);
+        padding: 15px 20px;
+        border-bottom: 2px solid var(--primary);
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+    header h1 { margin: 0; font-size: 1.3rem; letter-spacing: 0.5px; }
+    header p { margin: 5px 0 0 0; font-size: 0.85rem; color: var(--text-muted); }
+
+    /* Área de Chat */
+    #chat { 
+        flex: 1;
+        overflow-y: auto; 
+        padding: 20px; 
+        box-sizing: border-box;
+    }
+
+    .msg { 
+        margin: 15px 0; 
+        padding: 14px 18px; 
+        border-radius: 12px; 
+        max-width: 75%; 
+        line-height: 1.5;
+        font-size: 0.95rem;
+        box-shadow: 0 2px 4px rgb(0 0 0 / 0.05);
+    }
+    .bot { background: var(--bg-card); border-left: 4px solid var(--primary); }
+    .user { background: var(--primary); margin-left: auto; border-bottom-right-radius: 2px; }
+
+    /* Alertas de Riesgo Jurídico Incorporadas al Chatbot */
+    .alerta-riesgo {
+        background: #451a03;
+        border-left: 4px solid var(--warning);
+        color: #fef3c7;
+    }
+
+    /* Botones de Selección Múltiple (Flujo Guiado) */
+    .btn-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+        max-width: 100%;
+    }
+    .optionBtn {
+        text-align: left;
+        padding: 12px;
+        background: #334155;
+        border: 1px solid #475569;
+        color: var(--text-white);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+    .optionBtn:hover {
+        background: #475569;
+        border-color: var(--primary);
+    }
+
+    /* Barra de Entrada de Datos Inferior */
+    #inputArea { 
+        display: flex; 
+        padding: 15px 20px; 
+        background: var(--bg-input); 
+        border-top: 1px solid #334155;
+        gap: 10px;
+        align-items: center;
+    }
+    input { 
+        flex: 1; 
+        padding: 12px; 
+        border: 1px solid #334155; 
+        border-radius: 6px; 
+        background: var(--bg-card); 
+        color: var(--text-white); 
+        outline: none; 
+        font-size: 0.95rem;
+    }
+    input:focus { border-color: var(--primary); }
+    
+    button { 
+        padding: 12px 24px; 
+        cursor: pointer; 
+        border: none; 
+        border-radius: 6px; 
+        font-weight: 600; 
+        font-size: 0.9rem;
+        transition: background 0.2s;
+    }
+    .btn-enviar { background: var(--primary); color: var(--text-white); }
+    .btn-enviar:hover { background: var(--primary-hover); }
+    
+    .btn-word { 
+        background: var(--success); 
+        color: var(--text-white); 
+        display: none; /* Se activa solo al final del flujo */
+    }
+    .btn-word:hover { background: var(--success-hover); }
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>⚖️ Asistente de Estructuración Contractual Internacional</h1>
+    <p>Caso Base Académico: PAYBRIDGE 360 | Unicolmayor • Derecho Internacional Privado 2026-1</p>
+</header>
+
+<div id="chat"></div>
+
+<div id="inputArea">
+    <input id="input" placeholder="Selecciona una opción del flujo guiado o escribe aquí..." onkeydown="if(event.key === 'Enter') sendText()" />
+    <button class="btn-enviar" onclick="sendText()">Enviar</button>
+    <button id="btnWord" class="btn-word" onclick="descargarWord()">📥 Descargar Minuta Word</button>
+</div>
+
+<script>
+let historial = "";
+let paso = 0;
+
+// Variables dinámicas que completarán la minuta final del caso
+let datosMinuta = {
+    ley_aplicable: "",
+    mecanismo_solucion: "",
+    idioma_disputa: "",
+    titularidad_codigo: "",
+    estandar_datos: "",
+    regimen_responsabilidad: "",
+    uso_activos_digitales: "",
+    valor_anexos: "",
+    idioma_prevalente: "",
+    duracion_confidencialidad: "",
+    efectos_terminacion: ""
+};
+
+// Árbol de decisiones y preguntas adaptadas a las 10 circunstancias problemáticas del taller
+const flujoPreguntas = [
+    {
+        campo: "ley_aplicable",
+        pregunta: "<b>[1/11] Circunstancia Problemática - LEY APLICABLE:</b><br>Las partes plantean leyes conflictivas (Colombia, Inglaterra o Principios UNIDROIT). En virtud del principio de autonomía de la voluntad en el Derecho Internacional Privado, ¿qué ley regulará este contrato?",
+        opciones: [
+            { texto: "Ley de la República de Colombia (Favorece a LATAM PAY, lugar de ejecución inicial)", valor: "la República de Colombia" },
+            { texto: "Leyes de Inglaterra y Gales (Favorece a BLOCKFIN, foro común en contratos tech internacionales)", valor: "Inglaterra y Gales" },
+            { texto: "Principios UNIDROIT sobre los Contratos Comerciales Internacionales (Reglas de Soft Law de neutralidad transfronteriza)", valor: "los Principios UNIDROIT sobre los Contratos Comerciales Internacionales como lex mercatoria, de manera directa por las partes" }
+        ],
+        riesgo: "⚠️ <b>Advertencia Jurídica:</b> Elegir una legislación estatal local como la colombiana puede generar resistencia por las contrapartes europeas, mientras que los Principios UNIDROIT requieren de una ley estatal subsidiaria robusta para suplir vacíos procesales imperativos."
+    },
+    {
+        campo: "mecanismo_solucion",
+        pregunta: "<b>[2/11] Circunstancia Problemática - SOLUCIÓN DE CONTROVERSIAS:</b><br>Considerando la internacionalidad del contrato y la pluralidad de foros, ¿cuál será el mecanismo formal definitivo para resolver disputas?",
+        opciones: [
+            { texto: "Cláusula de Arbitraje Internacional administrado por el Centro de Arbitraje de la Cámara de Comercio de Bogotá", valor: "Arbitraje Internacional conducido de conformidad con el Reglamento de Arbitraje de la Cámara de Comercio de Bogotá" },
+            { texto: "Cláusula de Arbitraje Internacional con sede en Madrid, España (Foro e idioma de confluencia neutral)", valor: "Arbitraje Internacional ante la Corte de Arbitraje de Madrid, España" },
+            { texto: "Jurisdicción Ordinaria del Estado Colombiano (Jueces Civiles del Circuito de Bogotá D.C.)", valor: "los Jueces Ordinarios de la ciudad de Bogotá D.C., Colombia, renunciando expresamente a cualquier otro fuero" }
+        ],
+        riesgo: "⚠️ <b>Advertencia Jurídica:</b> Someter un litigio tecnológico transfronterizo de 12 millones de USD a la justicia ordinaria estatal puede acarrear demoras de años y falta de especialidad técnica judicial. Se aconseja optar por el arbitraje institucional."
+    },
+    {
+        campo: "idioma_disputa",
+        pregunta: "<b>[3/11] IDIOMA DE LAS ACTUACIONES EN LITIGIOS:</b><br>BLOCKFIN prefiere inglés y LATAM PAY prefiere español. ¿Cuál será el idioma oficial procesal para resolver las controversias?",
+        opciones: [
+            { texto: "Idioma Español", valor: "el idioma español en su totalidad" },
+            { texto: "Idioma Inglés", valor: "el idioma inglés en su totalidad" },
+            { texto: "Bilingüe (Español e Inglés, con traducciones simultáneas compartidas en costos)", valor: "los idiomas español e inglés de forma conjunta" }
+        ],
+        riesgo: ""
+    },
+    {
+        campo: "titularidad_codigo",
+        pregunta: "<b>[4/11] Circunstancia Problemática - PROPIEDAD INTELECTUAL:</b><br>LATAM PAY financia la adaptación local de PAYBRIDGE 360, pero BLOCKFIN y CRYPTODATA defienden sus desarrollos base previos. ¿Cómo se regulará la titularidad del código fuente futuro y los desarrollos derivados?",
+        opciones: [
+            { texto: "Copropiedad en partes iguales (33.3% para cada una de las sociedades)", valor: "una copropiedad intelectual compartida en porcentajes idénticos, requiriéndose autorización unánime para cualquier explotación comercial fuera del objeto contractual" },
+            { texto: "Titularidad exclusiva de LATAM PAY sobre desarrollos derivados (por cofinanciación local)", valor: "propiedad exclusiva de LATAM PAY S.A.S. sobre todo desarrollo derivado, interfaz local y base de datos latinoamericana, manteniendo las contrapartes licencias comerciales de explotación recíprocas" },
+            { texto: "Titularidad según arquitectura física (Cada parte es dueña de lo que programe y ensamble su respectivo equipo técnico)", valor: "propiedad individual y segregada. Cada parte conservará la titularidad exclusiva de los desarrollos derivados que programe para su propio módulo técnico asignado" }
+        ],
+        riesgo: "⚠️ <b>Advertencia Jurídica:</b> El silencio o ambigüedad respecto al código fuente derivado en propiedad compartida suele congelar la explotación del software ante rupturas del negocio. Se requiere delimitación exacta."
+    },
+    {
+        campo: "estandar_datos",
+        pregunta: "<b>[5/11] Circunstancia Problemática - DATOS PERSONALES:</b><br>Se recopilarán datos biométricos (KYC) procesados en Colombia, Reino Unido, Alemania y EE.UU. ¿Bajo qué estándar normativo se blindará la transferencia internacional de datos?",
+        opciones: [
+            { texto: "Estándar Dual: Ley 1581 de 2012 (Colombia) y RGPD de la Unión Europea (Estándar más restrictivo global)", valor: "el cumplimiento concurrente y acumulativo de la Ley 1581 de 2012 de Colombia y el Reglamento General de Protección de Datos (RGPD) de la Unión Europea, aplicando siempre el estándar de seguridad más alto y restrictivo" },
+            { texto: "Estándar Mínimo Legal Local (Cada parte responde ante su autoridad nacional)", valor: "las normas aplicables exclusivamente en el domicilio de la parte que actúe como Responsable o Encargado según el flujo del dato, de forma independiente" }
+        ],
+        riesgo: "⚠️ <b>Advertencia Jurídica:</b> El tratamiento irresponsable de datos biométricos sin un estándar transfronterizo explícito puede acarrear multas multimillonarias por parte de la Superintendencia de Industria y Comercio (SIC) en Colombia o las agencias de control europeas."
+    },
+    {
+        campo: "regimen_responsabilidad",
+        pregunta: "<b>[6/11] Circunstancia Problemática - CIBERSEGURIDAD Y RESPONSABILIDAD:</b><br>Tras el hackeo simulado de 2025 originado en un contratista de BLOCKFIN, ¿cómo se delimitará la responsabilidad objetiva ante ataques informáticos o ransomware?",
+        opciones: [
+            { texto: "Responsabilidad objetiva y penalización directa a la parte cuyo módulo sea vulnerado", valor: "el principio de atribución causal directa: la parte de cuya infraestructura o contratistas provenga la brecha responderá de forma integral y mantendrá indemne a las demás frente a reclamaciones de terceros y usuarios" },
+            { texto: "Fondo de contingencia común proporcional al valor contractual de las partes", valor: "la mitigación de pérdidas a través del Fondo de Contingencia Común (hasta USD 1.500.000) de forma preferente; los excedentes serán asumidos a prorrata de la participación económica de cada empresa" }
+        ],
+        riesgo: ""
+    },
+    {
+        campo: "uso_activos_digitales",
+        pregunta: "<b>[7/11] Circunstancia Problemática - ACTIVOS DIGITALES (STABLECOINS):</b><br>BLOCKFIN propone liquidaciones en stablecoins vinculadas al USD. CRYPTODATA exige transferencias en Euros (€) por políticas de cumplimiento. ¿Cuál será la regla de pago?",
+        opciones: [
+            { texto: "Híbrido Condicionado: Pagos ordinarios en moneda fiduciaria (USD/EUR) y liquidaciones opcionales en stablecoins sujetas a aprobación de cumplimiento", valor: "transferencias bancarias internacionales en USD o EUR para operaciones base. Se autoriza el uso secundario de stablecoins referenciadas al dólar siempre que el área de cumplimiento (compliance) de cada empresa valide la debida diligencia y trazabilidad de los fondos de origen" },
+            { texto: "Prohibición Absoluta de Criptoactivos (Pagos exclusivamente en divisa fiduciaria por canal bancario Swift)", valor: "la prohibición absoluta del uso de activos digitales o criptomonedas, obligándose al pago exclusivo mediante transferencias bancarias internacionales Swift en USD o EUR" }
+        ],
+        riesgo: "⚠️ <b>Advertencia Jurídica:</b> El uso de stablecoins expone a LATAM PAY S.A.S. a severos riesgos de fiscalización cambiaria e impositiva en Colombia si no se estructuran bajo un estricto protocolo de debida diligencia y trazabilidad."
+    },
+    {
+        campo: "valor_anexos",
+        pregunta: "<b>[8/11] Circunstancia Problemática - DOCUMENTACIÓN MULTILINGÜE:</b><br>La documentación técnica esencial (como el 'Technical Payment Roadmap 2025') está redactada exclusivamente en idioma inglés sin traducción oficial. ¿Qué valor jurídico tendrán estos anexos?",
+        opciones: [
+            { texto: "Valor vinculante directo y vinculación contractual plena del anexo técnico en inglés", valor: "carácter plenamente vinculante y obligatorio para el desarrollo e ingeniería del proyecto, aceptando las partes que las expresiones técnicas en inglés obligan su ejecución literal" },
+            { texto: "Valor meramente ilustrativo (Exige traducción oficial obligatoria previa a su exigibilidad)", valor: "carácter meramente informativo e ilustrativo, careciendo de fuerza ejecutiva vinculante directa hasta tanto no medie traducción oficial refrendada al idioma español" }
+        ],
+        riesgo: ""
+    },
+    {
+        campo: "idioma_prevalente",
+        pregunta: "<b>[9/11] IDIOMA PREVALENTE DEL CONTRATO:</b><br>En caso de discrepancia interpretativa entre el clausulado en español y cualquier anexo o comunicación técnica en inglés, ¿cuál idioma prevalece?",
+        opciones: [
+            { texto: "Prevalece el Idioma Español (Texto principal)", valor: "español" },
+            { texto: "Prevalece el Idioma Inglés (Anexos técnicos)", valor: "inglés" }
+        ],
+        riesgo: ""
+    },
+    {
+        campo: "duracion_confidencialidad",
+        pregunta: "<b>[10/11] Circunstancia Problemática - CONFIDENCIALIDAD:</b><br>BLOCKFIN solicita protección por 10 años; CRYPTODATA exige protección indefinida para secretos empresariales y algoritmos biométricos. ¿Cómo se regulará?",
+        opciones: [
+            { texto: "Protección mixta temporal y perpetua diferenciada", valor: "temporal de diez (10) años contados a partir de la terminación para información comercial u ordinaria, y de carácter indefinido, perpetuo e irrevocable para los secretos empresariales, algoritmos de autenticación y códigos fuente propietarios de las partes" },
+            { texto: "Término fijo uniforme de 10 años para toda la información compartida", valor: "término fijo e improrrogable de diez (10) años para toda clase de información compartida, extinguiéndose toda obligación de reserva posterior" }
+        ],
+        riesgo: ""
+    },
+    {
+        campo: "efectos_terminacion",
+        pregunta: "<b>[11/11] Circunstancia Problemática - EFECTOS POST-TERMINACIÓN:</b><br>En caso de desintegración contractual, ¿cómo se garantizará la continuidad de los 18.500 usuarios activos?",
+        opciones: [
+            { texto: "Plan de Transición Guiado: Soporte de mantenimiento mínimo obligatorio por 6 meses post-terminación", valor: "un periodo de transición operativa obligatoria de seis (6) meses posteriores a la ruptura, durante el cual BLOCKFIN y CRYPTODATA deberán garantizar el soporte mínimo transaccional para evitar la afectación de los usuarios activos, mediante compensación económica regulada" },
+            { texto: "Apagado técnico inmediato (Extinción ipso facto de licencias y servicios)", valor: "la desconexión inmediata y extinción ipso facto de todas las licencias temporales y accesos técnicos de los módulos compartidos, asumiendo cada sociedad de forma individual sus riesgos de contingencia comercial con clientes" }
+        ],
+        riesgo: ""
+    }
+];
+
+function addMsg(text, type, esAlerta = false){
+    let div = document.createElement("div");
+    div.className = "msg " + type + (esAlerta ? " alerta-riesgo" : "");
+    div.innerHTML = text;
+    document.getElementById("chat").appendChild(div);
+    document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+}
+
+function renderOpciones(opciones) {
+    if(!opciones || opciones.length === 0) return;
+    
+    let container = document.createElement("div");
+    container.className = "btn-container";
+    
+    opciones.forEach(opt => {
+        let btn = document.createElement("button");
+        btn.className = "optionBtn";
+        btn.innerText = opt.texto;
+        btn.onclick = () => procesarRespuesta(opt.texto, opt.valor);
+        container.appendChild(btn);
+    });
+    
+    document.getElementById("chat").appendChild(container);
+    document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+}
+
+function iniciar(){
+    // Inserción obligatoria del DUE DILIGENCE DE CONTROL DE IA exigido por la rúbrica del profesor Melo (Pág. 10 del Taller)
+    let dueDiligenceText = `<b>🚨 DEBER DE TRANSPARENCIA Y DUE DILIGENCE JURÍDICO (CONTROL HUMANO DE IA)</b><br>
+    En estricto cumplimiento de las directrices académicas de la Facultad de Derecho[cite: 277, 508]:<br>
+    1. Se advierte la necesidad absoluta de verificar de forma humana autónoma las normas, tratados internacionales y doctrina aplicables a esta transacción antes de su implementación profesional[cite: 458].<br>
+    2. Queda estrictamente prohibido fundamentar decisiones en fuentes o tratados inexistentes en el ordenamiento internacional privado[cite: 459].<br>
+    3. Esta interfaz provee una sugerencia de automatización de estructura lógica y no reemplaza el criterio ni el concepto jurídico profesional final de un abogado experto[cite: 461].<br>
+    4. La revisión humana de la minuta final es obligatoria para mitigar riesgos de asimetría contractual transfronteriza[cite: 462, 463].`;
+    
+    addMsg(dueDiligenceText, "bot", true);
+    
+    setTimeout(() => {
+        addMsg("Hola. Soy tu interfaz de asistencia jurídica estructurada para el desarrollo del caso práctico internacional del proyecto <b>PAYBRIDGE 360</b>[cite: 330]. Guiaré la recolección de las decisiones del grupo para ensamblar la minuta final[cite: 292, 452].", "bot");
+        siguientePaso();
+    }, 1500);
+}
+
+function siguientePaso(){
+    if(paso < flujoPreguntas.length){
+        let item = flujoPreguntas[paso];
+        addMsg(item.pregunta, "bot");
+        if(item.riesgo) {
+            setTimeout(() => addMsg(item.riesgo, "bot", true), 300);
+        }
+        setTimeout(() => renderOpciones(item.opciones), 500);
+    } else {
+        addMsg("🎉 <b>¡Flujo de toma de decisiones jurídicas internacionales completado con éxito!</b><br>Las variables críticas han sido insertadas dentro del cuerpo de la minuta oficial compartida.", "bot");
+        document.getElementById("btnWord").style.display = "block";
+        document.getElementById("input").placeholder = "Flujo completado. Descarga el reporte Word.";
+        document.getElementById("input").disabled = true;
+    }
+}
+
+function procesarRespuesta(textoMostrado, valorJuridico) {
+    // Eliminar los botones anteriores para mantener limpia la interfaz estética
+    let contenedores = document.querySelectorAll('.btn-container');
+    if(contenedores.length > 0) {
+        contenedores[contenedores.length - 1].remove();
+    }
+
+    addMsg(textoMostrado, "user");
+    
+    let campoActual = flujoPreguntas[paso].campo;
+    datosMinuta[campoActual] = valorJuridico;
+    
+    historial += `<p><b>Pregunta Circunstancia [${campoActual.toUpperCase()}]:</b> Opción adoptada por el grupo: <i>${textoMostrado}</i>. Texto contractual inyectado: "${valorJuridico}".</p>`;
+    
+    paso++;
+    setTimeout(siguientePaso, 600);
+}
+
+function sendText() {
+    let input = document.getElementById("input");
+    let text = input.value.trim();
+    if(!text) return;
+    
+    // Si el usuario escribe libremente, se almacena de forma genérica en el campo actual del flujo
+    if(paso < flujoPreguntas.length) {
+        procesarRespuesta(text, text);
+    } else {
+        addMsg(text, "user");
+    }
+    input.value = "";
+}
+
+function descargarWord(){
+    // El texto íntegro de la minuta de contrato internacional proporcionado por el usuario, con inyección dinámica de las decisiones adoptadas en el flujo interactivo
+    let cuerpoContrato = `
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body { font-family: 'Arial', sans-serif; line-height: 1.5; color: #000000; padding: 40px; }
+            h1 { text-align: center; font-size: 14pt; font-weight: bold; text-transform: uppercase; margin-bottom: 25px; }
+            h2 { font-size: 11pt; font-weight: bold; text-transform: uppercase; margin-top: 20px; }
+            p { font-size: 11pt; text-align: justify; margin-bottom: 12px; }
+            .nota-ia { background-color: #f3f4f6; border-left: 3px solid #3b82f6; padding: 15px; font-style: italic; font-size: 10pt; margin-top: 30px; }
+        </style>
+    </head>
+    <body>
+        <h1>CONTRATO INTERNACIONAL DE COLABORACIÓN EMPRESARIAL, DESARROLLO TECNOLÓGICO, LICENCIAMIENTO DE SOFTWARE E INTEGRACIÓN DE SERVICIOS DIGITALES </h1>
+        
+        <p><b>Entre los suscritos a saber:</b> [cite: 520]</p>
+        
+        <p><b>1. LATAM PAY S.A.S.</b>, sociedad comercial colombiana, identificada con NIT No. 901.884.732-6, con domicilio principal en la Carrera 11 No. 93-42, Oficina 702, Edificio Capital Business Center de la ciudad de Bogotá D.C., Colombia, representada legalmente por la señora Mariana Valentina Rojas Méndez, identificada con cédula de ciudadanía No. 1.032.458.776 de Bogotá; [cite: 521]</p>
+        
+        <p><b>2. BLOCKFIN GLOBAL LTD.</b>, sociedad constituida conforme a las leyes de Inglaterra y Gales, con número de registro societario No. 14277893, con domicilio principal en 88 Bishopsgate, Floor 12, London EC2N 4AG, United Kingdom, representada para la negociación internacional por el señor Oliver James Whitmore, identificado con pasaporte británico No. 582741936; y [cite: 522, 523]</p>
+        
+        <p><b>3. CRYPTODATA SOLUTIONS GmbH</b>, sociedad de responsabilidad limitada constituida conforme al derecho alemán, registrada en el Handelsregister de Berlín bajo el número HRB 238944 B, con domicilio principal en Friedrichstraße 123, 10117 Berlín, República Federal de Alemania, representada legalmente por la señora Anna Katharina Müller, identificada con documento de identidad alemán No. L01X994728; [cite: 524]</p>
+        
+        <p>Quienes en adelante se denominarán conjuntamente como <b>"Las Partes"</b>, acuerdan celebrar el presente contrato contenido en las siguientes cláusulas: [cite: 525]</p>
+        
+        <h2>CLÁUSULA PRIMERA: OBJETO [cite: 526]</h2>
+        <p>El presente contrato tiene por objeto regular la colaboración empresarial entre Las Partes para el diseño, desarrollo, integración, prueba, operación y expansión transfronteriza de la plataforma digital conjunta de pagos y validación de identidad denominada provisionalmente "PAYBRIDGE 360"[cite: 526].</p>
+        
+        <h2>CLÁUSULA SEGUNDA: LEY APLICABLE [cite: 527]</h2>
+        <p>Las Partes acuerdan de forma expresa que este contrato se regirá, interpretará y ejecutará de conformidad con las leyes de <u><b>${datosMinuta.ley_aplicable}</b></u>[cite: 527]. Cualquier remisión a normas del Derecho Internacional Privado que implique la aplicación de otra ley queda expresamente excluida por la autonomía privada de las partes[cite: 528].</p>
+        
+        <h2>CLÁUSULA TERCERA: MECANISMO DE SOLUCIÓN DE CONTROVERSIAS [cite: 529]</h2>
+        <p>Toda controversia, diferencia o reclamación que surja de la interpretación, ejecución o terminación de este contrato se resolverá mediante <u><b>${datosMinuta.mecanismo_solucion}</b></u>[cite: 529]. Las condiciones específicas de este mecanismo serán: [cite: 530]<br>
+        a) Idioma de las actuaciones: <u><b>${datosMinuta.idioma_disputa}</b></u>[cite: 531].<br>
+        b) Etapa previa: Antes de iniciar el mecanismo formal, cualquier disputa de carácter netamente técnico deberá someterse obligatoriamente a un panel de expertos independientes de conformidad con la propuesta de CRYPTODATA SOLUTIONS GmbH[cite: 532].</p>
+        
+        <h2>CLÁUSULA CUARTA: PROPIEDAD INTELECTUAL Y TITULARIDAD [cite: 533]</h2>
+        <p><b>1. Desarrollos previos:</b> BLOCKFIN GLOBAL LTD. conserva la propiedad exclusiva sobre la infraestructura de pagos y el motor de liquidación digital, otorgando una licencia de uso limitada[cite: 534]. CRYPTODATA SOLUTIONS GmbH conserva la propiedad exclusiva y el secreto empresarial sobre su módulo de verificación de identidad y algoritmos biométricos[cite: 535].<br>
+        <b>2. Desarrollos futuros y derivados:</b> En atención a la cofinanciación y aportes locales, la titularidad sobre el código fuente desarrollado conjuntamente, las interfaces locales, las marcas y las bases de datos generadas durante la ejecución del proyecto se regulará de la siguiente forma: <u><b>${datosMinuta.titularidad_codigo}</b></u>[cite: 536].</p>
+        
+        <h2>CLÁUSULA QUINTA: DATOS PERSONALES Y TRANSFERENCIAS INTERNACIONALES [cite: 537]</h2>
+        <p>Las Partes reconocen que la plataforma recolectará datos personales ordinarios y datos biométricos de usuarios en múltiples jurisdicciones[cite: 537]. En consecuencia, pactan: [cite: 538]<br>
+        <b>1. Roles:</b> LATAM PAY S.A.S. actuará como Responsable del Tratamiento frente a los clientes latinoamericanos[cite: 539]. CRYPTODATA SOLUTIONS GmbH actuará como Encargado respecto a la validación, y Responsable Independiente en sus procesos de verificación[cite: 540]. BLOCKFIN GLOBAL LTD. solo accederá a metadatos técnicos e identificadores transaccionales anonimizados[cite: 541].<br>
+        <b>2. Estándar de Cumplimiento:</b> Las transferencias internacionales de datos entre Colombia, Reino Unido, Alemania, México, Perú, Ecuador, Chile y España se ajustarán estrictamente a <u><b>${datosMinuta.estandar_datos}</b></u>[cite: 542].</p>
+        
+        <h2>CLÁUSULA SEXTA: CIBERSEGURIDAD Y RESPONSABILIDAD CONTRACTUAL [cite: 543]</h2>
+        <p>Cada parte responderá civil y contractualmente por los fallos tecnológicos, errores de programación o incidentes de seguridad que ocurran dentro de su respectivo módulo o infraestructura asignada[cite: 543]. Ante un evento de ataque informático, filtración de datos, ransomware o fraude electrónico, la responsabilidad se asignará de acuerdo con: <u><b>${datosMinuta.regimen_responsabilidad}</b></u>[cite: 544].</p>
+        
+        <h2>CLÁUSULA SÉPTIMA: FORMA DE PAGO Y ACTIVOS DIGITALES [cite: 545]</h2>
+        <p>El valor estimado del proyecto para los primeros cinco (5) años es de hasta doce millones de dólares (USD 12.000.000)[cite: 545]. Respecto a las transacciones y liquidaciones monetarias entre Las Partes, se acuerda lo siguiente: <u><b>${datosMinuta.uso_activos_digitales}</b></u>[cite: 546].</p>
+        
+        <h2>CLÁUSULA OCTAVA: IDIOMA DEL CONTRATO Y ANEXOS TÉCNICOS [cite: 547]</h2>
+        <p>El presente contrato se firma en idioma español[cite: 547]. Sin perjuicio de ello, los documentos técnicos preexistentes y futuros (incluyendo el "Technical Payment Roadmap PAYBRIDGE 360") que se encuentren redactados en idioma inglés tendrán un valor jurídico de carácter <u><b>${datosMinuta.valor_anexos}</b></u> y, en caso de cualquier contradicción o discrepancia entre el texto del contrato y sus anexos, prevalecerá el idioma <u><b>${datosMinuta.idioma_prevalente}</b></u>[cite: 548].</p>
+        
+        <h2>CLÁUSULA NOVENA: CONFIDENCIALIDAD Y SECRETOS EMPRESARIALES [cite: 549]</h2>
+        <p>Las Partes se obligan a mantener estricta reserva sobre toda la información técnica, financiera y comercial intercambiada durante las etapas precontractual y contractual[cite: 549]. Los secretos empresariales de CRYPTODATA SOLUTIONS GmbH y BLOCKFIN GLOBAL LTD. gozarán de una protección de carácter <u><b>${datosMinuta.duracion_confidencialidad}</b></u>[cite: 550].</p>
+        
+        <h2>CLÁUSULA DÉCIMA: EFECTOS DE LA TERMINACIÓN [cite: 551]</h2>
+        <p>A la terminación del contrato, por cualquier causa, Las Partes se obligan mutuamente a la devolución de la información confidencial, la supresión segura de datos personales bajo los estándares aplicables, la continuidad del soporte técnico mínimo para los usuarios activos por el tiempo acordado, y la extinción de las licencias de uso temporales otorgadas, conforme al siguiente esquema de salida: <u><b>${datosMinuta.efectos_terminacion}</b></u>[cite: 551].</p>
+        
+        <p>En constancia de lo anterior, Las Partes firman el presente documento de manera electrónica[cite: 552].</p>
+        
+        <hr style="margin-top:40px;">
+        
+        <div class="nota-ia">
+            <h3>ANEXO DE METODOLOGÍA Y CONTROL DE AUDITORÍA DE IA</h3>
+            ${historial}
+            <br>
+            <b>Declaración de Uso Responsable de IA [cite: 468]:</b> El presente árbol de decisión y el esquema de estructuración contractual transfronteriza fue configurado bajo supervisión humana crítica, en consonancia con la lex mercatoria y los parámetros normativos del Derecho Internacional Privado contemporáneo[cite: 473, 510].
+        </div>
+    </body>
+    </html>
+    `;
+
+    let blob = new Blob(['\ufeff', cuerpoContrato], {type:'application/msword'});
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Contrato_Internacional_Paybridge360.doc";
+    link.click();
+}
+
+// Inicialización automática
+iniciar();
+</script>
+
+</body>
+</html>
